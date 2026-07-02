@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Potmate · v2 生命感预览</title>
+<style>
+  :root {
+    --ink: #2f2a24;
+    --ink-soft: #5c5145;
+    --cream: #fffdf6;
+    --line: rgba(119, 97, 67, 0.16);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    background: linear-gradient(160deg, #f6efe2, #efe6d4 55%, #e9e2d0);
+    display: grid;
+    place-items: center;
+    padding: 28px 16px;
+  }
+  .wrap { display: flex; gap: 26px; align-items: stretch; flex-wrap: wrap; justify-content: center; }
+
+  /* 模拟桌面：植物透明地"贴"在壁纸上 */
+  .desktop {
+    position: relative;
+    width: 460px; min-height: 560px;
+    border-radius: 22px;
+    overflow: hidden;
+    background:
+      radial-gradient(420px 300px at 20% 12%, rgba(255, 236, 200, 0.55), transparent 70%),
+      radial-gradient(360px 300px at 85% 30%, rgba(196, 226, 210, 0.5), transparent 70%),
+      linear-gradient(180deg, #dfe9dc 0%, #e9e4d2 52%, #d8cdb9 100%);
+    box-shadow: 0 24px 60px rgba(88, 64, 38, 0.18), inset 0 1px 0 rgba(255,255,255,0.7);
+    display: grid; place-items: end center;
+  }
+  .desktop::after {
+    content: "模拟桌面 · 植物窗口透明置顶";
+    position: absolute; top: 14px; left: 18px;
+    font-size: 11px; color: rgba(64, 55, 44, 0.45); letter-spacing: 1px;
+  }
+  canvas { display: block; }
+
+  .panel {
+    width: 300px;
+    background: linear-gradient(180deg, rgba(255,253,246,0.96), rgba(250,245,232,0.94));
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 18px 42px rgba(88, 64, 38, 0.13);
+    display: flex; flex-direction: column; gap: 13px;
+  }
+  h1 { margin: 0; font-size: 17px; }
+  .sub { margin: 0; font-size: 12px; color: var(--ink-soft); line-height: 1.5; }
+  .plant-name { font-size: 14px; font-weight: 700; }
+  .plant-motto { font-size: 12px; color: #6d7d63; }
+  .vitality-label { font-size: 12px; color: var(--ink-soft); }
+
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    border: 1px solid var(--line);
+    background: rgba(255, 252, 244, 0.85);
+    color: var(--ink-soft);
+    border-radius: 999px;
+    padding: 8px 13px;
+    font: inherit; font-size: 13px;
+    cursor: pointer;
+    transition: transform .12s ease, background .12s ease;
+  }
+  button:hover { background: #fff; transform: translateY(-1px); }
+  button.primary { background: #8fae82; border-color: #7d9c72; color: #fffdf4; font-weight: 700; }
+  button.primary:hover { background: #9cba8e; }
+  button.active { background: #40465e; border-color: #40465e; color: #f3f0ff; }
+
+  label.toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
+  input[type="range"] { width: 100%; accent-color: #8fae82; }
+
+  .hints { border-top: 1px dashed var(--line); padding-top: 11px; display: grid; gap: 7px; }
+  .hint { font-size: 12px; color: var(--ink-soft); line-height: 1.55; }
+  .hint b { color: var(--ink); }
+  .foot { font-size: 11px; color: rgba(92, 81, 69, 0.6); border-top: 1px dashed var(--line); padding-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="desktop"><canvas id="stage" width="420" height="540"></canvas></div>
+
+  <aside class="panel">
+    <div>
+      <h1>Potmate · v2 生命感预览</h1>
+      <p class="sub">设计评审件：验证「生动 · 通人性 · 看着舒服」。移动鼠标靠近它试试。</p>
+    </div>
+
+    <div>
+      <div class="plant-name" id="plantName"></div>
+      <div class="plant-motto" id="plantMotto"></div>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="btnWater">浇水 💧</button>
+      <button id="btnPoke">戳一下</button>
+      <button id="btnButterfly">招蝴蝶</button>
+      <button id="btnSleep">睡眠模式</button>
+      <button id="btnNext">换一株 →</button>
+    </div>
+
+    <div>
+      <div class="vitality-label">活力 <span id="vitVal"></span> · <span id="vitLabel"></span></div>
+      <input type="range" id="vitSlider" min="12" max="100" step="1" value="88" />
+      <p class="sub" style="margin:4px 0 0">往左拖：看叶子<b>一片一片</b>垂下（参差枯萎）；点浇水看它复活。</p>
+    </div>
+
+    <label class="toggle"><input type="checkbox" id="chkReduced" /> reduce-motion（无障碍：只留慢呼吸）</label>
+
+    <div class="hints">
+      <div class="hint"><b>生动</b>：每片叶子摆动相位不同步（风场噪声）；呼吸节奏随活力从 3s 变到 7s。</div>
+      <div class="hint"><b>通人性</b>：鼠标停在花附近≈太阳——它会慢慢倾过来（向光性）；连戳 5 下它会头晕闹脾气；夜里合拢叶子睡觉。</div>
+      <div class="hint"><b>舒服</b>：常态动作幅度 2~6px、频率 0.1~0.3Hz，全部缓动，余光不打扰。</div>
+    </div>
+
+    <div class="foot">动效为 v2 架构（pose 姿态层 + 噪声 + 弹簧 + 事件时间轴）的浏览器实现；美术为方向稿，非最终定稿。</div>
+  </aside>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  // ---------- 基础工具 ----------
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = (t) => t * t * (3 - 2 * t);
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // 1D 值噪声：平滑连续的伪随机曲线，模拟风
+  function makeNoise(seed) {
+    const rng = mulberry32(seed);
+    const v = Array.from({ length: 256 }, () => rng());
+    return (x) => {
+      const i = Math.floor(x);
+      const f = x - i;
+      return lerp(v[i & 255], v[(i + 1) & 255], smooth(f)) * 2 - 1;
+    };
+  }
+
+  // 阻尼弹簧：连续状态的"慢慢跟上"，向光性/回正都靠它
+  function makeSpring(pos = 0, k = 6, d = 4.6) {
+    return {
+      p: pos, v: 0,
+      step(target, dt) {
+        const a = (target - this.p) * k - this.v * d;
+        this.v += a * dt;
+        this.p += this.v * dt;
+        return this.p;
+      },
+    };
+  }
+
+  // 关键帧采样（迷你时间轴，代产品里的 GSAP）
+  function sampleKeys(keys, t) {
+    if (t <= keys[0][0]) return keys[0][1];
+    for (let i = 0; i < keys.length - 1; i++) {
+      const [t0, v0] = keys[i], [t1, v1] = keys[i + 1];
+      if (t <= t1) return lerp(v0, v1, smooth((t - t0) / (t1 - t0)));
+    }
+    return keys[keys.length - 1][1];
+  }
+
+  function bezier(p0, c1, c2, p1, t) {
+    const u = 1 - t;
+    return {
+      x: u*u*u*p0.x + 3*u*u*t*c1.x + 3*u*t*t*c2.x + t*t*t*p1.x,
+      y: u*u*u*p0.y + 3*u*u*t*c1.y + 3*u*t*t*c2.y + t*t*t*p1.y,
+    };
+  }
+
+  // ---------- 基因预设（对应记录情绪 → 外观） ----------
+  const PRESETS = [
+    { name: '「咖啡与猫的下午」', motto: '心形叶 · 暖绿 · 粉色单瓣（正向 · 平静）',
+      stemStyle: 'upright', leafShape: 'heart', leafColor: { h: 96, s: 52, l: 44 },
+      flowerType: 'single', flowerColor: { h: 18, s: 72, l: 68 },
+      density: 0.62, sway: 1.0, seed: 7, decor: ['coffee'] },
+    { name: '「雨后的安静」', motto: '长叶 · 冷绿 · 垂铃小花（低落 · 温柔陪伴）',
+      stemStyle: 'curved', leafShape: 'long', leafColor: { h: 158, s: 38, l: 40 },
+      flowerType: 'bell', flowerColor: { h: 212, s: 46, l: 66 },
+      density: 0.52, sway: 0.7, seed: 23, decor: ['dew'] },
+    { name: '「超级开心的一天！」', motto: '裂叶 · 明亮 · 一簇小花（高唤醒 · 好动）',
+      stemStyle: 'branching', leafShape: 'split', leafColor: { h: 84, s: 58, l: 46 },
+      flowerType: 'cluster', flowerColor: { h: 36, s: 78, l: 62 },
+      density: 0.8, sway: 1.45, seed: 41, decor: ['star'] },
+  ];
+
+  // ---------- 舞台 ----------
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+  const W = 420, H = 540;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const BASE = { x: 210, y: 386 };      // 茎根部（土面）
+  const SOIL_Y = 390, POT_TOP = 376;
+  const PLANT_H = 205;                  // 满成长高度
+
+  // ---------- 全局状态 ----------
+  let genome, leaves, noiseGust, noiseFlutter, rng;
+  let vitality = 88;                    // 12~100（温和模式下限 12）
+  let vitalitySmooth = 88;              // 低通平滑，不跳变
+  let sleeping = false, sleepFold = 0;
+  let reduced = false;
+  let soilDark = 0;
+
+  const lean = makeSpring(0, 5.5, 4.4); // 向光性（慢弹簧：注意力是慢慢被吸引的）
+  let attention = 0;
+  let mouse = { x: -999, y: -999, inside: false };
+
+  let pokeT = 99, wobbleT = 99, waterT = 99, celebrateT = 99;
+  const clickTimes = [];
+  let bubble = null;                    // {text, t}
+  let breathPhase = 0;
+  let particles = [], butterflies = [];
+  let nextIdleEvent = 8;                // 随机小动作调度
+  let nextZzz = 0;
+
+  const POKE_SY = [[0, 1], [0.12, 0.84], [0.3, 1.07], [0.46, 0.96], [0.64, 1]];
+
+  function buildPlant(preset) {
+    genome = preset;
+    rng = mulberry32(preset.seed);
+    noiseGust = makeNoise(preset.seed * 3 + 1);
+    noiseFlutter = makeNoise(preset.seed * 7 + 5);
+    const count = Math.round(7 + preset.density * 4);
+    leaves = Array.from({ length: count }, (_, i) => ({
+      t: 0.16 + 0.7 * (i / (count - 1)),          // 沿茎位置
+      side: i % 2 === 0 ? -1 : 1,
+      size: 15 + preset.density * 10 + rng() * 5,
+      phase: rng() * 20,                            // 参差相位：绝不同步
+      speed: 0.55 + rng() * 0.5,
+      wiltAt: 20 + rng() * 62,                      // 每片叶自己的枯萎阈值
+      wp: 0,                                        // 当前枯萎进度（平滑）
+      shiver: 99,
+    }));
+    document.getElementById('plantName').textContent = preset.name;
+    document.getElementById('plantMotto').textContent = preset.motto;
+  }
+
+  // ---------- 行为触发 ----------
+  function poke() {
+    if (waterT < 3.2) return;                       // 事件互斥：浇水编舞中不接戳击
+    pokeT = 0;
+    spawnPetals(6);
+    const now = performance.now() / 1000;
+    clickTimes.push(now);
+    while (clickTimes.length && now - clickTimes[0] > 2.2) clickTimes.shift();
+    if (clickTimes.length >= 5) {                   // 连点脾气
+      wobbleT = 0; clickTimes.length = 0;
+      bubble = { text: '呜…头晕了', t: 0 };
+    }
+  }
+
+  function water() {
+    if (waterT < 3.2) return;
+    waterT = 0;
+    bubble = null;
+  }
+
+  function spawnPetals(n) {
+    const tip = stemTip();
+    for (let i = 0; i < n; i++) {
+      const a = rng() * TAU;
+      particles.push({ kind: 'petal', x: tip.x, y: tip.y, vx: Math.cos(a) * (26 + rng() * 40), vy: -30 - rng() * 50, rot: rng() * TAU, life: 1.4 });
+    }
+  }
+  function spawnSparkles(n) {
+    const tip = stemTip();
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU;
+      particles.push({ kind: 'spark', x: tip.x, y: tip.y, vx: Math.cos(a) * (34 + rng() * 26), vy: Math.sin(a) * (34 + rng() * 26) - 22, life: 1 });
+    }
+  }
+  function spawnButterfly() {
+    if (butterflies.length >= 2) return;
+    butterflies.push({ t: 0, dur: 8 + rng() * 2, phase: rng() * 10 });
+  }
+
+  // ---------- 每帧更新 ----------
+  let last = performance.now();
+  function frame(nowMs) {
+    const dt = clamp((nowMs - last) / 1000, 0, 0.1); // dt clamp：休眠唤醒防爆炸
+    last = nowMs;
+    const t = nowMs / 1000;
+    update(t, dt);
+    draw(t);
+    requestAnimationFrame(frame);
+  }
+
+  function update(t, dt) {
+    const rm = reduced ? 0.15 : 1;
+    const vit01 = vitality / 100;
+
+    // 呼吸：节奏就是生命体征（3.2s 精神 → 7.5s 蔫）
+    const breathT = lerp(7.5, 3.2, vit01) * (sleeping ? 1.7 : 1);
+    breathPhase += (dt / breathT) * TAU;
+
+    // 活力平滑（低通），驱动整体下垂
+    vitalitySmooth = lerp(vitalitySmooth, vitality, 1 - Math.exp(-dt * 1.6));
+
+    // 睡眠合叶
+    sleepFold = clamp(sleepFold + (sleeping ? dt / 2.4 : -dt / 2), 0, 1);
+
+    // 向光性：鼠标 = 太阳，注意力慢慢积累、慢慢消退
+    const tip = stemTip();
+    const dist = Math.hypot(mouse.x - tip.x, mouse.y - tip.y);
+    const near = mouse.inside && dist < 240 && !sleeping;
+    attention = clamp(attention + (near ? dt / 1.3 : -dt / 1.8), 0, 1);
+    const leanTarget = near ? clamp((mouse.x - tip.x) / 240, -1, 1) * 0.7 * attention * rm : 0;
+    lean.step(leanTarget, dt);
+
+    // 每片叶：枯萎进度平滑逼近自己的阈值（参差枯萎/复活）
+    for (const lf of leaves) {
+      const target = clamp((lf.wiltAt - vitalitySmooth) / 14, 0, 1);
+      lf.wp = lerp(lf.wp, target, 1 - Math.exp(-dt * 2.2));
+      lf.shiver += dt;
+    }
+
+    // 事件时间轴推进
+    pokeT += dt; wobbleT += dt; celebrateT += dt;
+    if (waterT < 99) {
+      const prev = waterT; waterT += dt;
+      // 水滴窗口
+      if (waterT > 0.25 && waterT < 1.15 && !reduced) {
+        particles.push({ kind: 'drop', x: BASE.x - 66 + rng() * 26, y: POT_TOP - 195, vx: 46 + rng() * 30, vy: 10, life: 3 });
+      }
+      if (waterT > 0.6) soilDark = clamp(soilDark + dt * 0.9, 0, 1);
+      // 活力回满 + 庆祝
+      if (waterT > 1.6 && waterT < 3.0) {
+        vitality = clamp(lerp(vitality, 100, (waterT - 1.6) / 1.4), 12, 100);
+        syncSlider();
+      }
+      if (prev < 2.0 && waterT >= 2.0) { spawnSparkles(14); celebrateT = 0; bubble = { text: '谢谢～', t: 0 }; }
+      if (waterT >= 3.2) waterT = 99;
+    }
+    soilDark = clamp(soilDark - dt * 0.01, 0, 1);
+
+    // 随机小动作：低频才有惊喜（泊松感）
+    nextIdleEvent -= dt;
+    if (nextIdleEvent <= 0) {
+      nextIdleEvent = 16 + Math.random() * 22;
+      if (!reduced && !sleeping) {
+        if (Math.random() < 0.45) spawnButterfly();
+        else { const lf = leaves[(Math.random() * leaves.length) | 0]; lf.shiver = 0; }
+      }
+    }
+    // 睡眠 Zzz
+    nextZzz -= dt;
+    if (sleeping && sleepFold > 0.7 && nextZzz <= 0) {
+      nextZzz = 3.6;
+      particles.push({ kind: 'zzz', x: tip.x + 26, y: tip.y - 10, vx: 6, vy: -14, life: 3 });
+    }
+
+    if (bubble) { bubble.t += dt; if (bubble.t > 2.4) bubble = null; }
+
+    // 粒子
+    particles = particles.filter((p) => (p.life -= dt) > 0);
+    for (const p of particles) {
+      if (p.kind === 'drop') {
+        p.vy += 620 * dt;
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.y >= SOIL_Y - 8 && Math.abs(p.x - BASE.x) < 66) {
+          p.life = 0;
+          particles.push({ kind: 'splash', x: p.x, y: SOIL_Y - 8, vx: 0, vy: 0, life: 0.35 });
+        }
+      } else if (p.kind === 'petal') {
+        p.vy += 110 * dt; p.vx *= (1 - dt * 0.9);
+        p.x += p.vx * dt; p.y += p.vy * dt; p.rot += dt * 3;
+      } else if (p.kind === 'spark') {
+        p.vy += 30 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      } else if (p.kind === 'zzz') {
+        p.x += p.vx * dt; p.y += p.vy * dt;
+      }
+    }
+    butterflies = butterflies.filter((b) => (b.t += dt) < b.dur);
+  }
+
+  // ---------- 绘制 ----------
+  function stemHeight() { return PLANT_H * (0.55 + 0.45 * 1); } // 预览固定接近满成长
+  function stemGeom(t) {
+    const vit01 = vitalitySmooth / 100;
+    const droop = (1 - vit01);
+    const rm = reduced ? 0.15 : 1;
+    const gust = noiseGust(t * 0.32) * (1 - 0.8 * sleepFold);           // 慢风
+    const bend = genome.stemStyle === 'curved' ? -22 : genome.stemStyle === 'branching' ? 16 : 5;
+    const h = stemHeight() * (1 - 0.06 * (1 - vit01));
+    const leanPx = lean.p * 30;
+    const p0 = { x: BASE.x, y: BASE.y };
+    const c1 = { x: BASE.x - bend * 0.4 + leanPx * 0.15 + gust * 1.2 * rm, y: BASE.y - h * 0.36 };
+    const c2 = { x: BASE.x + bend + leanPx * 0.6 + gust * 3.4 * rm * genome.sway, y: BASE.y - h * 0.72 };
+    const p1 = { x: BASE.x + bend * 0.4 + leanPx + gust * 5 * rm * genome.sway, y: BASE.y - h + droop * 30 + sleepFold * 12 };
+    return { p0, c1, c2, p1, gust, droop };
+  }
+  function stemTip() { const g = stemGeom(last / 1000); return g.p1; }
+
+  function withVitality(c, alpha) {
+    const r = vitalitySmooth / 100;
+    return `hsla(${c.h - (1 - r) * 28}, ${c.s * (0.5 + r * 0.5)}%, ${c.l * (0.76 + r * 0.24)}%, ${alpha})`;
+  }
+  const hsl = (c) => `hsl(${c.h}, ${c.s}%, ${c.l}%)`;
+
+  function draw(t) {
+    ctx.clearRect(0, 0, W, H);
+    const g = stemGeom(t);
+    const rm = reduced ? 0.15 : 1;
+
+    drawGlow(t);
+    drawShadow();
+    drawPot();
+
+    // —— 呼吸 + 戳击 + 头晕：以根部为轴的整株变换 ——
+    const breathAmp = (reduced ? 0.005 : 0.013) * (0.6 + 0.4 * (vitalitySmooth / 100));
+    const bs = Math.sin(breathPhase) * breathAmp;
+    const sy = sampleKeys(POKE_SY, pokeT);
+    const sx = clamp(2 - sy, 0.9, 1.12);
+    const wob = wobbleT < 1.5 ? Math.sin(wobbleT * 15) * 0.13 * (1 - wobbleT / 1.5) : 0;
+    const shiverX = waterT > 1.4 && waterT < 1.95 ? Math.sin(waterT * 46) * 2.6 * (1 - (waterT - 1.4) / 0.55) : 0;
+
+    ctx.save();
+    ctx.translate(BASE.x + shiverX, BASE.y);
+    ctx.rotate(wob);
+    ctx.scale(sx * (1 + bs * 0.6), sy * (1 + bs));
+    ctx.translate(-BASE.x, -BASE.y);
+
+    drawStem(g, t);
+    if (genome.stemStyle === 'branching') drawBranches(g, t);
+    drawLeaves(g, t, rm);
+    drawFlower(g, t);
+    ctx.restore();
+
+    drawDecor(g, t);
+    drawParticles();
+    drawButterflies(t, g);
+    if (bubble) drawBubble(g);
+    if (sleepFold > 0.02) drawNight();
+  }
+
+  function drawGlow(t) {
+    const pulse = 1 + Math.sin(breathPhase) * 0.06;
+    const boost = celebrateT < 1.6 ? (1.6 - celebrateT) * 0.5 : 0;
+    const glow = ctx.createRadialGradient(BASE.x, 250, 10, BASE.x, 250, (150 + attention * 26) * pulse);
+    glow.addColorStop(0, `rgba(255, 247, 216, ${0.20 + attention * 0.10 + boost * 0.2})`);
+    glow.addColorStop(0.55, 'rgba(214, 239, 222, 0.13)');
+    glow.addColorStop(1, 'rgba(214, 239, 222, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function drawShadow() {
+    const sh = ctx.createRadialGradient(BASE.x, 448, 8, BASE.x, 448, 112);
+    sh.addColorStop(0, 'rgba(99, 78, 57, 0.18)');
+    sh.addColorStop(1, 'rgba(82, 58, 42, 0)');
+    ctx.fillStyle = sh;
+    ctx.beginPath(); ctx.ellipse(BASE.x, 448, 112, 20, 0, 0, TAU); ctx.fill();
+  }
+
+  function drawPot() {
+    const rim = ctx.createLinearGradient(120, POT_TOP - 6, 300, POT_TOP + 60);
+    rim.addColorStop(0, '#eab58a'); rim.addColorStop(0.5, '#c8795f'); rim.addColorStop(1, '#9c5e4f');
+    ctx.fillStyle = rim;
+    rr(124, POT_TOP - 10, 172, 46, 23); ctx.fill();
+
+    const body = ctx.createLinearGradient(144, POT_TOP + 26, 276, POT_TOP + 96);
+    body.addColorStop(0, '#c98264'); body.addColorStop(1, '#a2604f');
+    ctx.fillStyle = body;
+    rr(144, POT_TOP + 30, 132, 62, 24); ctx.fill();
+
+    // 高光
+    ctx.fillStyle = 'rgba(255, 232, 190, 0.55)';
+    rr(140, POT_TOP + 2, 38, 13, 8); ctx.fill();
+
+    // 土（浇水后变深）
+    const dry = { r: 111, g: 77, b: 59 }, wet = { r: 66, g: 45, b: 38 };
+    const mix = (a, b) => Math.round(lerp(a, b, soilDark));
+    ctx.fillStyle = `rgb(${mix(dry.r, wet.r)},${mix(dry.g, wet.g)},${mix(dry.b, wet.b)})`;
+    ctx.beginPath(); ctx.ellipse(BASE.x, SOIL_Y - 4, 70, 17, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = `rgba(40, 28, 24, ${0.5 + soilDark * 0.2})`;
+    ctx.beginPath(); ctx.ellipse(BASE.x, SOIL_Y - 6, 56, 10, 0, 0, TAU); ctx.fill();
+  }
+
+  function drawStem(g, t) {
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = withVitality(genome.leafColor, 0.85);
+    ctx.lineWidth = 6 - g.droop * 1.6;
+    ctx.beginPath();
+    ctx.moveTo(g.p0.x, g.p0.y);
+    ctx.bezierCurveTo(g.c1.x, g.c1.y, g.c2.x, g.c2.y, g.p1.x, g.p1.y);
+    ctx.stroke();
+    // 受光高光
+    ctx.strokeStyle = 'rgba(245, 255, 231, 0.3)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(g.p0.x - 1.5, g.p0.y - 3);
+    ctx.bezierCurveTo(g.c1.x - 1.5, g.c1.y, g.c2.x - 1.5, g.c2.y, g.p1.x - 1, g.p1.y + 5);
+    ctx.stroke();
+  }
+
+  function drawBranches(g, t) {
+    for (const [bt, dir] of [[0.5, -1], [0.66, 1]]) {
+      const p = bezier(g.p0, g.c1, g.c2, g.p1, bt);
+      const sway = noiseFlutter(t * 0.5 + bt * 9) * 3 * (reduced ? 0.15 : 1);
+      ctx.strokeStyle = withVitality(genome.leafColor, 0.6);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.quadraticCurveTo(p.x + dir * 18, p.y - 12, p.x + dir * 33 + sway, p.y - 26 + g.droop * 10);
+      ctx.stroke();
+    }
+  }
+
+  function drawLeaves(g, t, rm) {
+    for (const lf of leaves) {
+      const p = bezier(g.p0, g.c1, g.c2, g.p1, lf.t);
+      const flutter = noiseFlutter(t * lf.speed + lf.phase) * 0.09 * genome.sway * rm * (1 - 0.85 * sleepFold);
+      const gustRot = g.gust * 0.05 * rm;
+      const shiv = lf.shiver < 0.6 ? Math.sin(lf.shiver * 42) * 0.18 * (1 - lf.shiver / 0.6) : 0;
+
+      // 健康姿态 → 枯萎外垂 → 睡眠内拢，三种姿态平滑混合
+      let rot = lf.side * -0.55 + flutter + gustRot + shiv;
+      rot = lerp(rot, lf.side * (-0.55 + 1.3), lf.wp);            // 枯萎：向下外翻
+      rot = lerp(rot, lf.side * -1.22, sleepFold * (1 - lf.wp));  // 睡眠：向上合拢
+      const x = p.x + lf.side * (16 + (lf.phase % 3) * 6) * (1 - 0.5 * sleepFold);
+      const y = p.y + lf.wp * 7;
+      const size = lf.size * (1 - lf.wp * 0.22);
+      drawLeaf(x, y, size, lf.side, rot, withVitality(genome.leafColor, 0.92 - lf.wp * 0.2));
+    }
+  }
+
+  function drawLeaf(x, y, size, side, rot, color) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+    const grad = ctx.createLinearGradient(-size, -size, size, size);
+    grad.addColorStop(0, color);
+    grad.addColorStop(0.78, 'rgba(226, 244, 210, 0.72)');
+    grad.addColorStop(1, 'rgba(255, 250, 220, 0.4)');
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = 'rgba(52, 77, 49, 0.1)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const s = genome.leafShape;
+    if (s === 'heart') {
+      ctx.moveTo(0, size * 0.48);
+      ctx.bezierCurveTo(-size, -size * 0.2, -size * 0.2, -size, 0, -size * 0.28);
+      ctx.bezierCurveTo(size * 0.2, -size, size, -size * 0.2, 0, size * 0.48);
+    } else if (s === 'long') {
+      ctx.ellipse(0, 0, size * 0.4, size, 0, 0, TAU);
+    } else if (s === 'split') {
+      ctx.moveTo(0, -size);
+      ctx.bezierCurveTo(-size * 0.9, -size * 0.2, -size * 0.42, size * 0.8, 0, size);
+      ctx.bezierCurveTo(size * 0.42, size * 0.8, size * 0.9, -size * 0.2, 0, -size);
+    } else {
+      ctx.ellipse(0, 0, size * 0.7, size * 0.9, 0, 0, TAU);
+    }
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(248, 255, 236, 0.4)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(0, size * 0.5);
+    ctx.quadraticCurveTo(side * size * 0.16, 0, 0, -size * 0.68);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFlower(g, t) {
+    const x = g.p1.x, y = g.p1.y;
+    const headRot = lean.p * 0.5 + g.gust * 0.04;    // 花头朝"太阳"转
+    const open = 1 - sleepFold * 0.35 - g.droop * 0.25;
+    const color = hsl(genome.flowerColor);
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(headRot);
+    ctx.scale(open, open);
+
+    const halo = ctx.createRadialGradient(0, 0, 4, 0, 0, 44);
+    const hb = celebrateT < 1.6 ? (1.6 - celebrateT) * 0.25 : 0;
+    halo.addColorStop(0, `rgba(255, 243, 198, ${0.4 + hb})`);
+    halo.addColorStop(1, 'rgba(255, 243, 198, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, 44, 0, TAU); ctx.fill();
+
+    if (genome.flowerType === 'bell') {
+      ctx.rotate(Math.PI * 0.06);
+      const bell = ctx.createLinearGradient(0, -8, 0, 26);
+      bell.addColorStop(0, 'rgba(255, 250, 234, 0.95)');
+      bell.addColorStop(0.6, color);
+      bell.addColorStop(1, 'rgba(120, 140, 190, 0.8)');
+      ctx.fillStyle = bell;
+      ctx.beginPath();
+      ctx.moveTo(-11, -4);
+      ctx.bezierCurveTo(-13, 12, -8, 22, 0, 24);
+      ctx.bezierCurveTo(8, 22, 13, 12, 11, -4);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f5d784';
+      ctx.beginPath(); ctx.arc(0, 26, 3.4, 0, TAU); ctx.fill();
+    } else if (genome.flowerType === 'cluster') {
+      for (const [ox, oy, sc] of [[0, -4, 0.72], [-17, 8, 0.55], [16, 10, 0.6]]) {
+        drawSingleFlower(ox, oy, sc, color);
+      }
+    } else {
+      drawSingleFlower(0, 0, 1, color);
+    }
+    ctx.restore();
+  }
+
+  function drawSingleFlower(ox, oy, scale, color) {
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.scale(scale, scale);
+    for (let i = 0; i < 6; i++) {
+      ctx.rotate(TAU / 6);
+      const pg = ctx.createLinearGradient(0, -30, 0, 2);
+      pg.addColorStop(0, 'rgba(255, 250, 234, 0.95)');
+      pg.addColorStop(0.68, color);
+      pg.addColorStop(1, 'rgba(255, 233, 202, 0.72)');
+      ctx.fillStyle = pg;
+      ctx.beginPath(); ctx.ellipse(0, -16, 7.5, 19, 0, 0, TAU); ctx.fill();
+    }
+    ctx.fillStyle = '#f5d784';
+    ctx.beginPath(); ctx.arc(0, 0, 7.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(117, 86, 45, 0.25)';
+    ctx.beginPath(); ctx.arc(0, 1, 2.8, 0, TAU); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawDecor(g, t) {
+    for (const d of genome.decor) {
+      if (d === 'dew') {
+        for (const [i, lf] of [[1, leaves[1]], [3, leaves[3]]]) {
+          if (!lf) continue;
+          const p = bezier(g.p0, g.c1, g.c2, g.p1, lf.t);
+          const a = 0.4 + 0.25 * Math.sin(t * 1.6 + i);
+          ctx.fillStyle = `rgba(186, 226, 231, ${a})`;
+          ctx.beginPath(); ctx.arc(p.x + lf.side * 20, p.y + 6, 3.2, 0, TAU); ctx.fill();
+        }
+      } else if (d === 'coffee') {
+        ctx.fillStyle = 'rgba(111, 77, 59, 0.8)';
+        ctx.beginPath(); ctx.ellipse(BASE.x + 48, SOIL_Y - 8, 4, 6.4, 0.4, 0, TAU); ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 240, 214, 0.5)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(BASE.x + 48, SOIL_Y - 13); ctx.lineTo(BASE.x + 48, SOIL_Y - 3); ctx.stroke();
+      } else if (d === 'star') {
+        for (let i = 0; i < 3; i++) {
+          const a = 0.35 + 0.3 * Math.sin(t * 2 + i * 2.1);
+          ctx.fillStyle = `rgba(245, 226, 168, ${a})`;
+          const sx = BASE.x - 70 + i * 62, sy = 150 + (i % 2) * 34;
+          ctx.beginPath(); ctx.arc(sx, sy, 2.6, 0, TAU); ctx.fill();
+        }
+      }
+    }
+  }
+
+  function drawParticles() {
+    for (const p of particles) {
+      const a = clamp(p.life, 0, 1);
+      if (p.kind === 'drop') {
+        ctx.fillStyle = `rgba(150, 200, 226, ${0.85 * a})`;
+        ctx.beginPath(); ctx.ellipse(p.x, p.y, 2.2, 3.6, 0, 0, TAU); ctx.fill();
+      } else if (p.kind === 'splash') {
+        ctx.strokeStyle = `rgba(150, 200, 226, ${a * 0.8})`;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.ellipse(p.x, p.y, (0.35 - p.life) * 26, (0.35 - p.life) * 9, 0, 0, TAU); ctx.stroke();
+      } else if (p.kind === 'petal') {
+        ctx.save();
+        ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = `hsla(${genome.flowerColor.h}, ${genome.flowerColor.s}%, ${genome.flowerColor.l}%, ${a * 0.85})`;
+        ctx.beginPath(); ctx.ellipse(0, 0, 3, 5.4, 0, 0, TAU); ctx.fill();
+        ctx.restore();
+      } else if (p.kind === 'spark') {
+        ctx.fillStyle = `rgba(255, 236, 170, ${a})`;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2.4 * a + 0.6, 0, TAU); ctx.fill();
+      } else if (p.kind === 'zzz') {
+        ctx.fillStyle = `rgba(120, 130, 170, ${a * 0.8})`;
+        ctx.font = `${12 + (3 - p.life) * 3}px sans-serif`;
+        ctx.fillText('z', p.x, p.y);
+      }
+    }
+  }
+
+  function drawButterflies(t, g) {
+    for (const b of butterflies) {
+      const u = b.t / b.dur;
+      const tip = g.p1;
+      // 三段路径：飞入 → 绕花 → 飞出
+      let x, y;
+      if (u < 0.35) {
+        const k = smooth(u / 0.35);
+        x = lerp(-30, tip.x + 40, k); y = lerp(180, tip.y - 26, k) + Math.sin(u * 40 + b.phase) * 9;
+      } else if (u < 0.7) {
+        const k = (u - 0.35) / 0.35 * TAU * 1.2;
+        x = tip.x + Math.cos(k) * 44; y = tip.y - 20 + Math.sin(k) * 20;
+      } else {
+        const k = smooth((u - 0.7) / 0.3);
+        x = lerp(tip.x + 44, W + 40, k); y = lerp(tip.y - 20, 120, k) + Math.sin(u * 36) * 8;
+      }
+      const flap = Math.abs(Math.sin(t * 16 + b.phase));
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = 'rgba(232, 150, 160, 0.9)';
+      ctx.beginPath(); ctx.ellipse(-4, 0, 6 * (0.35 + flap * 0.65), 4.6, -0.4, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(4, 0, 6 * (0.35 + flap * 0.65), 4.6, 0.4, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(90, 66, 52, 0.9)';
+      ctx.beginPath(); ctx.ellipse(0, 0, 1.6, 4.2, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function drawBubble(g) {
+    const a = bubble.t < 0.25 ? bubble.t / 0.25 : bubble.t > 1.9 ? clamp((2.4 - bubble.t) / 0.5, 0, 1) : 1;
+    const x = g.p1.x + 52, y = g.p1.y - 34 - bubble.t * 4;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.font = '13px "PingFang SC", sans-serif';
+    const w = ctx.measureText(bubble.text).width + 22;
+    ctx.fillStyle = 'rgba(255, 253, 246, 0.95)';
+    ctx.strokeStyle = 'rgba(119, 97, 67, 0.2)';
+    rr(x - w / 2, y - 15, w, 28, 14); ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y + 12); ctx.lineTo(x - 16, y + 22); ctx.lineTo(x + 1, y + 13);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#5c5145';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(bubble.text, x, y);
+    ctx.restore();
+  }
+
+  function drawNight() {
+    const a = sleepFold;
+    const ng = ctx.createLinearGradient(0, 0, 0, H);
+    ng.addColorStop(0, `rgba(46, 54, 92, ${0.22 * a})`);
+    ng.addColorStop(1, `rgba(46, 54, 92, ${0.06 * a})`);
+    ctx.fillStyle = ng;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+  // ---------- 交互接线 ----------
+  const slider = document.getElementById('vitSlider');
+  function syncSlider() {
+    slider.value = String(Math.round(vitality));
+    document.getElementById('vitVal').textContent = Math.round(vitality);
+    document.getElementById('vitLabel').textContent =
+      vitality > 76 ? '精神很好' : vitality > 52 ? '安静生长' : vitality > 32 ? '有些发蔫' : '等你回来';
+  }
+  slider.addEventListener('input', () => { vitality = +slider.value; syncSlider(); });
+
+  canvas.addEventListener('pointermove', (e) => {
+    const r = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.inside = true;
+  });
+  canvas.addEventListener('pointerleave', () => { mouse.inside = false; });
+  canvas.addEventListener('pointerdown', poke);
+
+  document.getElementById('btnWater').addEventListener('click', water);
+  document.getElementById('btnPoke').addEventListener('click', poke);
+  document.getElementById('btnButterfly').addEventListener('click', spawnButterfly);
+  document.getElementById('btnSleep').addEventListener('click', (e) => {
+    sleeping = !sleeping;
+    e.target.classList.toggle('active', sleeping);
+    if (!sleeping) bubble = { text: '早上好呀', t: 0 };
+  });
+  let presetIdx = 0;
+  document.getElementById('btnNext').addEventListener('click', () => {
+    presetIdx = (presetIdx + 1) % PRESETS.length;
+    buildPlant(PRESETS[presetIdx]);
+  });
+  document.getElementById('chkReduced').addEventListener('change', (e) => { reduced = e.target.checked; });
+
+  // ---------- 启动 ----------
+  buildPlant(PRESETS[0]);
+  syncSlider();
+  requestAnimationFrame((t0) => { last = t0; requestAnimationFrame(frame); });
+})();
+</script>
+</body>
+</html>
