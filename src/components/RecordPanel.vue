@@ -68,10 +68,15 @@ function submitRecord() {
 .record-panel {
   display: grid;
   gap: 8px;
+  box-sizing: border-box;
+  min-inline-size: 0;
+  inline-size: 100%;
 }
 
 .record-panel__input {
   box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
   min-block-size: 86px;
   resize: none;
   border: 1px solid rgba(92, 68, 49, 0.16);
@@ -96,12 +101,16 @@ function submitRecord() {
 
 .record-panel__moods {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
   gap: 6px;
+  min-inline-size: 0;
 }
 
 .record-panel__mood,
 .record-panel__submit {
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-inline-size: 0;
   min-block-size: 36px;
   border: 1px solid rgba(92, 68, 49, 0.14);
   border-radius: 8px;
@@ -139,9 +148,13 @@ function submitRecord() {
 }
 
 .record-panel__mood-label {
+  max-inline-size: 100%;
+  overflow: hidden;
   color: #6b5f52;
   font-size: 10px;
   line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .record-panel__mood--active {
