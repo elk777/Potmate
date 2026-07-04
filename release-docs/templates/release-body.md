@@ -1,4 +1,4 @@
-# Potmate {{TAG}}
+# Potmate V{{VERSION}}
 
 > Potmate「小盆友」是一只会随着每日记录慢慢成长的桌面花盆桌宠。
 

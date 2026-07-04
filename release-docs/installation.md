@@ -30,6 +30,8 @@ pnpm release:prepare 0.1.1
 
 这个命令会同步更新 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 的版本号，并在 `CHANGELOG.md` 里插入对应版本的更新模板。填好 changelog 后再提交和打 tag。
 
+稳定版本的 Git tag 仍然使用 `vX.Y.Z`，不要在 tag 里写空格或产品名。Release 页面标题会自动显示为 `Potmate VX.Y.Z`。
+
 稳定版本：
 
 ```bash

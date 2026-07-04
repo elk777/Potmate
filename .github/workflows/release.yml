@@ -80,6 +80,9 @@ jobs:
         id: release_body
         shell: bash
         run: |
+          VERSION="${RELEASE_TAG#v}"
+          VERSION="${VERSION#V}"
+          echo "title=Potmate V${VERSION}" >> "$GITHUB_OUTPUT"
           node scripts/generate-release-body.mjs "$RELEASE_TAG" > release-body.md
           {
             echo "body<<RELEASE_BODY_EOF"
@@ -96,7 +99,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ env.RELEASE_TAG }}
-          releaseName: "Potmate ${{ env.RELEASE_TAG }}"
+          releaseName: ${{ steps.release_body.outputs.title }}
           releaseDraft: true
           prerelease: ${{ contains(env.RELEASE_TAG, 'alpha') || contains(env.RELEASE_TAG, 'beta') || contains(env.RELEASE_TAG, 'rc') }}
           args: ${{ matrix.args }}
