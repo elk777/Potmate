@@ -12,6 +12,8 @@
     "build:desktop": "tauri build",
     "build:desktop:debug": "tauri build --debug",
     "package:dmg": "sh scripts/create-release-dmg.sh",
+    "release:body": "node scripts/generate-release-body.mjs",
+    "release:prepare": "node scripts/prepare-release.mjs",
     "verify:release": "sh scripts/verify-release.sh"
   },
   "dependencies": {

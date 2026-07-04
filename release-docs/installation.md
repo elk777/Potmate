@@ -22,6 +22,14 @@ Potmate 不上架应用商店。公开版本只通过 GitHub Releases 分发。
 
 ## Release Tag
 
+准备下一个版本：
+
+```bash
+pnpm release:prepare 0.1.1
+```
+
+这个命令会同步更新 `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 的版本号，并在 `CHANGELOG.md` 里插入对应版本的更新模板。填好 changelog 后再提交和打 tag。
+
 稳定版本：
 
 ```bash
@@ -37,6 +45,18 @@ git push origin v0.1.0-beta.1
 ```
 
 工作流会创建 draft release。发布前需要人工检查资产和说明。
+
+## Release 描述
+
+Release 描述由脚本自动生成：
+
+```bash
+pnpm release:body v0.1.0
+```
+
+脚本会读取 `CHANGELOG.md` 中对应版本的段落，并套用 `release-docs/templates/release-body.md`。以后升级版本时，只需要补好 `CHANGELOG.md`，再推送对应 tag。
+
+如果删除了 Draft Release，可以在 GitHub Actions 页面手动运行 `Release` workflow，并输入已有 tag 重新生成安装包和 Draft Release。
 
 ## 不签名版本说明
 

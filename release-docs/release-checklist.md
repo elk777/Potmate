@@ -6,6 +6,7 @@ Potmate 当前不走应用商店，只通过 GitHub Releases 分发安装包。
 
 - `package.json`、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml` 版本号一致。
 - `CHANGELOG.md` 写清楚本次新增、修复和已知问题。
+- `pnpm release:body vX.Y.Z` 能生成对应版本 Release 描述。
 - `README.md` 下载链接、安装包名称和支持平台仍然准确。
 - `PRIVACY.md` 和 `release-docs/privacy-permissions.md` 覆盖新增权限或数据行为。
 - `LICENSE` 已存在并符合公开分发预期。
