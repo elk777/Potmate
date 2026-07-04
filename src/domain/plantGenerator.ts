@@ -2,6 +2,7 @@ import { clamp } from './emotion'
 import type {
   Decoration,
   EmotionProfile,
+  FlowerSpecies,
   FlowerType,
   GrowthStage,
   HslColor,
@@ -13,8 +14,34 @@ import type {
   StemStyle,
 } from './types'
 
-export function createPlant(record: PlantRecord): PlantState {
-  const genome = createGenome(record.emotion)
+export type Difficulty = 'starter' | 'advanced' | 'rare'
+
+// 已养成(归档)数量 → 解锁池
+export function unlockedSpecies(bloomedCount: number): FlowerSpecies[] {
+  if (bloomedCount < 1) return ['daisy', 'lotus']
+  if (bloomedCount < 3) return ['daisy', 'lotus', 'sunflower', 'rose']
+  return ['daisy', 'lotus', 'sunflower', 'rose', 'bellflower']
+}
+
+export function pickSpecies(emotion: EmotionProfile, unlocked: FlowerSpecies[]): FlowerSpecies {
+  const ideal = idealSpecies(emotion)
+
+  if (unlocked.includes(ideal)) return ideal
+  if (unlocked.length === 0) return ideal
+
+  return unlocked[emotion.seed % unlocked.length]
+}
+
+function idealSpecies(emotion: EmotionProfile): FlowerSpecies {
+  if (emotion.valence > 0.5 && emotion.arousal > 0.6) return 'sunflower'
+  if (emotion.valence > 0.2) return 'daisy'
+  if (emotion.valence >= -0.2) return 'lotus'
+  if (emotion.valence < -0.2 && emotion.arousal > 0.5) return 'rose'
+  return 'bellflower'
+}
+
+export function createPlant(record: PlantRecord, bloomedCount: number): PlantState {
+  const genome = createGenome(record.emotion, unlockedSpecies(bloomedCount))
 
   return {
     id: record.plantId,
@@ -31,8 +58,8 @@ export function createPlant(record: PlantRecord): PlantState {
   }
 }
 
-export function createPlantFromSeed(record: PlantRecord, seed: PlantSeed): PlantState {
-  const freshGenome = createGenome(record.emotion)
+export function createPlantFromSeed(record: PlantRecord, seed: PlantSeed, bloomedCount: number): PlantState {
+  const freshGenome = createGenome(record.emotion, unlockedSpecies(bloomedCount))
 
   return {
     id: record.plantId,
@@ -86,12 +113,13 @@ export function getGrowthStage(growth: number): GrowthStage {
   return 'bloom'
 }
 
-function createGenome(emotion: EmotionProfile): PlantGenome {
+function createGenome(emotion: EmotionProfile, unlocked: FlowerSpecies[]): PlantGenome {
   return {
     stemStyle: pickStemStyle(emotion),
     leafShape: pickLeafShape(emotion),
     leafColor: colorFromValence(emotion.valence, emotion.seed),
     flowerType: pickFlowerType(emotion),
+    species: pickSpecies(emotion, unlocked),
     flowerColor: flowerColorFromEmotion(emotion),
     decorations: createDecorations(emotion),
     density: 0.35 + emotion.length * 0.45,
@@ -107,6 +135,7 @@ function accumulateGenome(genome: PlantGenome, emotion: EmotionProfile): PlantGe
 
   return {
     ...genome,
+    species: genome.species,
     decorations: nextDecorations,
     density: clamp(genome.density + 0.08 + emotion.length * 0.16, 0.35, 1),
     accentShifts: [...genome.accentShifts.slice(-5), flowerColorFromEmotion(emotion)],
@@ -122,6 +151,7 @@ function blendGenome(parentGenome: PlantGenome, freshGenome: PlantGenome, emotio
 
   return {
     ...parentGenome,
+    species: parentGenome.species ?? freshGenome.species,
     stemStyle: emotion.arousal > 0.7 ? freshGenome.stemStyle : parentGenome.stemStyle,
     leafShape: emotion.keywords.length > 0 ? freshGenome.leafShape : parentGenome.leafShape,
     leafColor: mixColor(parentGenome.leafColor, freshGenome.leafColor, 0.42),
@@ -176,12 +206,24 @@ function colorFromValence(valence: number, seed: number): HslColor {
 }
 
 function flowerColorFromEmotion(emotion: EmotionProfile): HslColor {
-  const hue = emotion.valence >= 0 ? 24 + emotion.valence * 36 + emotion.arousal * 18 : 218 + emotion.valence * 24
+  // 心情定色系家族，个人 seed 在家族内决定具体色调/浓淡 → 同心情的用户也各不相同
+  const base = flowerHueBase(emotion)
+  const hue = (base + (emotion.seed % 45) - 22 + 360) % 360
+
   return {
-    h: Math.round((hue + emotion.seed) % 360),
-    s: 58 + emotion.arousal * 22,
-    l: 62 + emotion.valence * 8,
+    h: Math.round(hue),
+    s: clamp(56 + emotion.arousal * 20 + (emotion.seed % 12), 40, 92),
+    l: clamp(60 + emotion.valence * 8 + ((emotion.seed >>> 3) % 10), 40, 82),
   }
+}
+
+// 心情 → 花色基准色系（seed 只在 ±22° 内抖动，家族不变）
+function flowerHueBase(emotion: EmotionProfile): number {
+  if (emotion.valence > 0.5 && emotion.arousal > 0.6) return 38 // 暖金 / 珊瑚：又开心又有劲
+  if (emotion.valence > 0.2) return 344 // 蜜桃粉 / 玫红：愉悦
+  if (emotion.valence >= -0.2) return 288 // 薰衣草 / 淡紫：平静
+  if (emotion.valence < -0.2 && emotion.arousal > 0.5) return 262 // 紫罗兰：低落而躁动
+  return 214 // 青蓝：低落
 }
 
 function createDecorations(emotion: EmotionProfile): Decoration[] {

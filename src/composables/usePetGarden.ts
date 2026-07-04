@@ -6,6 +6,7 @@ import { createPlant, createPlantFromSeed, createPlantSeed, growPlant } from '..
 import type {
   ActivityKind,
   ActivityState,
+  FlowerSpecies,
   GalleryItem,
   GardenState,
   MoodTag,
@@ -100,7 +101,7 @@ export function usePetGarden() {
     }
 
     const seed = pendingSeed.value
-    const plant = getNextPlant(record, garden.value.plant, seed)
+    const plant = getNextPlant(record, garden.value.plant, seed, garden.value.gallery.length)
 
     garden.value = {
       ...garden.value,
@@ -294,11 +295,16 @@ export function usePetGarden() {
   }
 }
 
-function getNextPlant(record: PlantRecord, currentPlant: PlantState | null, seed: PlantSeed | null): PlantState {
+function getNextPlant(
+  record: PlantRecord,
+  currentPlant: PlantState | null,
+  seed: PlantSeed | null,
+  bloomedCount: number,
+): PlantState {
   if (currentPlant) return growPlant(currentPlant, record)
-  if (seed) return createPlantFromSeed(record, seed)
+  if (seed) return createPlantFromSeed(record, seed, bloomedCount)
 
-  return createPlant(record)
+  return createPlant(record, bloomedCount)
 }
 
 async function loadGarden(desktopBridge: ReturnType<typeof useDesktopBridge>): Promise<GardenState> {
@@ -350,7 +356,18 @@ function normalizePlant(plant: PlantState): PlantState {
   return {
     ...plant,
     generation: plant.generation ?? 1,
+    genome: {
+      ...plant.genome,
+      species: plant.genome.species ?? speciesFromFlowerType(plant.genome.flowerType),
+    },
   }
+}
+
+function speciesFromFlowerType(flowerType: PlantState['genome']['flowerType']): FlowerSpecies {
+  if (flowerType === 'bell') return 'bellflower'
+  if (flowerType === 'cluster') return 'sunflower'
+  if (flowerType === 'single') return 'daisy'
+  return 'lotus'
 }
 
 function normalizeSettings(settings: Partial<Settings> | undefined): Settings {

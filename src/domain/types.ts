@@ -21,6 +21,7 @@ export interface EmotionProfile {
 export type StemStyle = 'upright' | 'curved' | 'branching'
 export type LeafShape = 'round' | 'heart' | 'long' | 'split'
 export type FlowerType = 'none' | 'single' | 'cluster' | 'bell'
+export type FlowerSpecies = 'lotus' | 'daisy' | 'rose' | 'bellflower' | 'sunflower'
 export type GrowthStage = 'empty' | 'sprout' | 'seedling' | 'adult' | 'bud' | 'bloom'
 export type ActivityKind = 'click' | 'key'
 
@@ -35,6 +36,7 @@ export interface PlantGenome {
   leafShape: LeafShape
   leafColor: HslColor
   flowerType: FlowerType
+  species: FlowerSpecies
   flowerColor: HslColor
   decorations: Decoration[]
   density: number
