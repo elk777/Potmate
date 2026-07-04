@@ -24,7 +24,7 @@ Questions to answer:
 
 <!-- Patterns that should never be used and why -->
 
-(To be filled by the team)
+- Desktop pet overlays must not resize the native transparent window when a panel opens, changes tabs, or changes content height. Keep the pet window stable; constrain the panel inside the current viewport with fixed anchors, `max-height`, and internal scrolling.
 
 ---
 
@@ -32,7 +32,7 @@ Questions to answer:
 
 <!-- Patterns that must always be used -->
 
-(To be filled by the team)
+- Before shipping a desktop pet overlay or resize interaction, verify small-window boundaries such as 220x325 and 320x520. Confirm the viewport size stays unchanged for panel open/close, popovers remain inside the viewport, and height grips grow upward from a fixed bottom anchor without moving the pet stage.
 
 ---
 
