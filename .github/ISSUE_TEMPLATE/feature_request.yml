@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest an improvement for Potmate
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      placeholder: "What feels missing or uncomfortable?"
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      placeholder: "What would you like Potmate to do?"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Desktop pet UI
+        - Growth system
+        - Records and memories
+        - Gallery and seeds
+        - Backup and data
+        - Packaging and installation
+        - Other
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Screenshots, sketches, or links are helpful.

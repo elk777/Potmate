@@ -5,7 +5,8 @@ PRODUCT_NAME="$(node -p "require('./src-tauri/tauri.conf.json').productName")"
 PACKAGE_VERSION="$(node -p "require('./package.json').version")"
 TAURI_VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
 CARGO_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -n 1)"
-MACOS_BUNDLE_DIR="src-tauri/target/debug/bundle/macos"
+RELEASE_BUNDLE_DIR="src-tauri/target/release/bundle"
+MACOS_BUNDLE_DIR="$RELEASE_BUNDLE_DIR/macos"
 APP_PATH="$MACOS_BUNDLE_DIR/$PRODUCT_NAME.app"
 
 case "$(uname -m)" in
@@ -14,7 +15,7 @@ case "$(uname -m)" in
   *) TARGET_ARCH="$(uname -m)" ;;
 esac
 
-DMG_PATH="src-tauri/target/debug/bundle/dmg/${PRODUCT_NAME}_${TAURI_VERSION}_${TARGET_ARCH}.dmg"
+DMG_PATH="$RELEASE_BUNDLE_DIR/dmg/${PRODUCT_NAME}_${TAURI_VERSION}_${TARGET_ARCH}.dmg"
 
 echo "==> Version consistency"
 if [ "$PACKAGE_VERSION" != "$TAURI_VERSION" ] || [ "$PACKAGE_VERSION" != "$CARGO_VERSION" ]; then
@@ -28,23 +29,27 @@ fi
 echo "==> Web build and type check"
 pnpm build
 
-echo "==> Desktop debug bundle"
+echo "==> Desktop release bundle"
 pnpm build:desktop
 
-if [ "$(uname -s)" = "Darwin" ]; then
-  echo "==> Debug DMG"
-  pnpm package:dmg
-fi
-
 echo "==> Artifact check"
-if [ ! -d "$APP_PATH" ]; then
-  echo "Missing app bundle: $APP_PATH"
-  exit 1
-fi
-
-if [ "$(uname -s)" = "Darwin" ] && [ ! -f "$DMG_PATH" ]; then
-  echo "Missing DMG: $DMG_PATH"
-  exit 1
-fi
+case "$(uname -s)" in
+  Darwin)
+    if [ ! -d "$APP_PATH" ]; then
+      echo "Missing app bundle: $APP_PATH"
+      exit 1
+    fi
+    if [ ! -f "$DMG_PATH" ]; then
+      echo "Missing DMG: $DMG_PATH"
+      exit 1
+    fi
+    ;;
+  Linux)
+    find "$RELEASE_BUNDLE_DIR" -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" \) | grep . >/dev/null
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    find "$RELEASE_BUNDLE_DIR" -type f \( -name "*.msi" -o -name "*.exe" \) | grep . >/dev/null
+    ;;
+esac
 
 echo "Release verification passed."

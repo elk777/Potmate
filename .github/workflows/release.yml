@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS Apple Silicon
+            platform: macos-latest
+            rustTarget: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles app,dmg
+          - name: macOS Intel
+            platform: macos-latest
+            rustTarget: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --bundles app,dmg
+          - name: Windows x64
+            platform: windows-latest
+            rustTarget: x86_64-pc-windows-msvc
+            args: --bundles msi,nsis
+          - name: Linux x64
+            platform: ubuntu-22.04
+            rustTarget: x86_64-unknown-linux-gnu
+            args: --bundles appimage,deb,rpm
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            rpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rustTarget }}
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and upload Tauri bundle
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Potmate ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          args: ${{ matrix.args }}
+          releaseBody: |
+            ## 安装包
+
+            请根据系统下载对应文件：
+
+            | 平台 | 推荐下载 |
+            | --- | --- |
+            | macOS Apple Silicon | `Potmate_*_aarch64.dmg` |
+            | macOS Intel | `Potmate_*_x64.dmg` |
+            | Windows | `.msi` 或 `.exe` |
+            | Linux 通用 | `.AppImage` |
+            | Ubuntu / Debian | `.deb` |
+            | Fedora / RHEL | `.rpm` |
+
+            ## 安装提示
+
+            - macOS 未签名/未公证版本可能提示无法验证开发者。可以右键打开，或执行 `xattr -cr /Applications/Potmate.app`。
+            - Windows 未签名版本可能触发 SmartScreen。确认安装包来自本 Release 后，点击“更多信息”->“仍要运行”。
+            - Linux 透明窗口、置顶和穿透表现可能受桌面环境影响。
+
+            ## 隐私
+
+            Potmate 默认本地保存每日记录和植物数据，不需要账号，不上传记录内容。活动养分只统计点击/按键事件数量，不保存具体按键或输入内容。
+
+            发布前请维护者根据 `CHANGELOG.md` 补充本次变更。

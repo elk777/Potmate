@@ -1,76 +1,62 @@
 # Potmate 小盆友
 
-Potmate「小盆友」是一个桌面端花盆桌宠原型。用户每天记录一件小事，文字情绪会影响植物的叶形、颜色、花型和装饰；植物会随记录生长、枯萎、恢复、盛放、结种，并进入图鉴。
+> 一只会随着每日记录慢慢成长的桌面花盆桌宠。
 
-## 当前能力
+[简体中文](README.zh-CN.md) | [English](README.en-US.md)
 
-- Vue 3 + TypeScript + Tauri 2 桌面应用。
-- 本地文字情绪分析和参数化 Canvas 植物渲染。
-- 每日记录、成长阶段、活力衰减、温和模式。
-- 盛放结种、图鉴收藏、种子继承。
-- Tauri Store 持久化，旧 `localStorage` 数据自动迁移。
-- JSON 备份导入/导出。
-- 托盘显示/隐藏/退出。
-- 系统通知、开机自启、全局键鼠活动监听。
-- macOS 权限不足时自动降级为窗口内活动监听。
+Potmate is a local-first desktop plant companion built with Tauri, Vue, TypeScript, Rust, and Canvas. It turns small daily notes and gentle activity signals into a growing flowerpot that lives on your desktop.
 
-## 开发
+## Download
+
+Installers are distributed through this repository's GitHub Releases page.
+
+| Platform | Recommended asset |
+| --- | --- |
+| macOS Apple Silicon | `Potmate_<version>_aarch64.dmg` |
+| macOS Intel | `Potmate_<version>_x64.dmg` |
+| Windows | `Potmate_<version>_x64_en-US.msi` or `Potmate_<version>_x64-setup.exe` |
+| Linux universal | `Potmate_<version>_amd64.AppImage` |
+| Ubuntu / Debian | `Potmate_<version>_amd64.deb` |
+
+See [Installation](INSTALL.md) for platform-specific steps and security prompts.
+
+## Highlights
+
+- Transparent always-on-top desktop flowerpot.
+- Daily text notes that influence plant shape, color, species, and decorations.
+- Growth stages, bloom, seed inheritance, gallery, and backup export/import.
+- Mini record bubble, control dock, action menu, and canvas pass-through mode.
+- Local storage by default. No account, cloud sync, or server upload.
+- Tray menu, notifications, optional autostart, and optional activity nourishment.
+
+## Privacy
+
+Potmate is designed to be local-first. Daily notes, plant state, gallery data, and settings stay on your machine unless you manually export a backup. Optional keyboard and mouse activity monitoring only counts activity events; it does not save key values, mouse coordinates, passwords, or text from other apps.
+
+Read the full [Privacy Policy](PRIVACY.md) and [Permissions Guide](release-docs/privacy-permissions.md).
+
+## Development
 
 ```bash
 pnpm install
-pnpm dev
-```
-
-桌面开发：
-
-```bash
 pnpm tauri dev
 ```
 
-## 构建
-
-Web 构建和类型检查：
-
-```bash
-pnpm build
-```
-
-桌面 debug 构建：
-
-```bash
-pnpm build:desktop
-```
-
-生成 debug DMG：
-
-```bash
-pnpm package:dmg
-```
-
-发布前本机验证：
+Release build:
 
 ```bash
 pnpm verify:release
 ```
 
-产物位置：
+## Documentation
 
-- `src-tauri/target/debug/bundle/macos/Potmate.app`
-- `src-tauri/target/debug/bundle/dmg/Potmate_<version>_<arch>.dmg`
+- [中文说明](README.zh-CN.md)
+- [English README](README.en-US.md)
+- [Installation](INSTALL.md)
+- [Troubleshooting](release-docs/troubleshooting.md)
+- [Release checklist](release-docs/release-checklist.md)
+- [Changelog](CHANGELOG.md)
 
-## 验收
+## License
 
-详见 [docs/v1-验收清单.md](docs/v1-验收清单.md)。
-
-发布准备：
-
-- [发布清单](docs/release-checklist.md)
-- [权限与隐私说明](docs/privacy-permissions.md)
-- [Windows 验证清单](docs/windows-verification.md)
-
-## 系统边界
-
-- macOS 全局键鼠监听需要用户授予辅助功能或输入监控权限。
-- 当前 macOS 包是 debug 构建，可用于自用/内部测试；未签名、未公证时首次打开可能需要手动允许。
-- 当前未配置自动更新。
-- Windows 相关能力需要在 Windows 真机上再做安装和权限验证。
+MIT. See [LICENSE](LICENSE).

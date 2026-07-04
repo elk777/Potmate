@@ -28,5 +28,5 @@ src-tauri/gen
 *.sln
 *.sw?
 
-# 文档
+# Local design drafts
 docs

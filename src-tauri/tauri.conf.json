@@ -33,7 +33,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
+    "targets": "all",
     "publisher": "Lucky Elk",
     "category": "Lifestyle",
     "shortDescription": "A gentle desktop plant companion.",
