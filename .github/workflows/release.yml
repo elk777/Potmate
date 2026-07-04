@@ -79,27 +79,77 @@ jobs:
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           args: ${{ matrix.args }}
           releaseBody: |
-            ## 安装包
+            > Potmate「小盆友」是一只会随着每日记录慢慢成长的桌面花盆桌宠。
+
+            ## 下载安装
 
             请根据系统下载对应文件：
 
-            | 平台 | 推荐下载 |
-            | --- | --- |
-            | macOS Apple Silicon | `Potmate_*_aarch64.dmg` |
-            | macOS Intel | `Potmate_*_x64.dmg` |
-            | Windows | `.msi` 或 `.exe` |
-            | Linux 通用 | `.AppImage` |
-            | Ubuntu / Debian | `.deb` |
-            | Fedora / RHEL | `.rpm` |
+            | 平台 | 推荐下载 | 说明 |
+            | --- | --- | --- |
+            | macOS Apple Silicon | `Potmate_*_aarch64.dmg` | 适用于 M 系列芯片 Mac |
+            | macOS Intel | `Potmate_*_x64.dmg` | 适用于 Intel 芯片 Mac |
+            | Windows | `.msi` 或 `.exe` | Windows 10 / 11 |
+            | Linux 通用 | `.AppImage` | 下载后添加执行权限即可运行 |
+            | Ubuntu / Debian | `.deb` | 适用于 Debian 系发行版 |
+            | Fedora / RHEL | `.rpm` | 适用于 RPM 系发行版 |
+
+            ## 本次发布内容
+
+            ### 桌宠体验
+
+            - 透明、置顶、无边框的桌面花盆桌宠。
+            - 支持拖动、缩放和画布穿透。
+            - 云朵风格花盆、露珠花环动作菜单、最小态记录气泡和控制台抽屉。
+
+            ### 成长系统
+
+            - 每日文字记录会影响植物叶形、颜色、花型、装饰和成长状态。
+            - 支持发芽、成长、花苞、盛放、结种、图鉴收藏和种子继承。
+            - 支持本地备份导入和导出。
+
+            ### 桌面能力
+
+            - 托盘显示、隐藏和退出。
+            - 系统通知、可选开机自启、可选键鼠活动养分。
 
             ## 安装提示
 
-            - macOS 未签名/未公证版本可能提示无法验证开发者。可以右键打开，或执行 `xattr -cr /Applications/Potmate.app`。
-            - Windows 未签名版本可能触发 SmartScreen。确认安装包来自本 Release 后，点击“更多信息”->“仍要运行”。
-            - Linux 透明窗口、置顶和穿透表现可能受桌面环境影响。
+            ### macOS
 
-            ## 隐私
+            当前安装包未签名、未公证，首次打开时可能提示“无法验证开发者”。可以右键打开，或执行：
+
+            ```bash
+            xattr -cr /Applications/Potmate.app
+            open /Applications/Potmate.app
+            ```
+
+            ### Windows
+
+            当前安装包未签名，可能触发 SmartScreen。确认安装包来自本 Release 后，点击“更多信息”->“仍要运行”。
+
+            ### Linux
+
+            AppImage 需要添加执行权限：
+
+            ```bash
+            chmod +x Potmate_*_amd64.AppImage
+            ./Potmate_*_amd64.AppImage
+            ```
+
+            Linux 的透明窗口、置顶、托盘和穿透表现可能受桌面环境影响。
+
+            ## 权限与隐私
 
             Potmate 默认本地保存每日记录和植物数据，不需要账号，不上传记录内容。活动养分只统计点击/按键事件数量，不保存具体按键或输入内容。
 
-            发布前请维护者根据 `CHANGELOG.md` 补充本次变更。
+            ## 已知问题
+
+            - macOS / Windows 安装包暂未签名。
+            - Linux 下透明窗口、置顶和穿透效果可能因 GNOME、KDE、Wayland、X11 等环境不同而表现不一致。
+            - 当前版本没有自动更新。
+            - 当前版本没有云同步，数据默认仅保存在本机。
+
+            ## 反馈
+
+            如果你遇到安装、权限、桌宠显示或数据备份问题，请在 Issues 中反馈，并尽量附上操作系统、安装包类型、截图和复现步骤。
